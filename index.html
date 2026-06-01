@@ -592,7 +592,8 @@ function renderProductos(){
       <div><div style="font-weight:600;font-size:14px">${p.desc}</div>
       <div class="tag">Cód: ${p.codigo} · Lote: ${p.lote}</div>
       <div class="tag" style="margin-top:3px">Inicio: ${p.stock} · Stock esperado actual: <strong>${teo}</strong> · ${p.upallet} u/pallet${p.venc?' · Venc: '+fmtF(p.venc):''}</div></div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">${badgeV(diasVenc(p.venc), p.venc)}<button class="btn-danger" onclick="eliminarProd('${p.id}')">🗑</button></div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">${badgeV(diasVenc(p.venc), p.venc)}<button class="btn-sec" style="padding:6px 10px;font-size:13px;margin-bottom:4px" onclick="editarProd('${p.id}')">✏️</button>
+        <button class="btn-danger" onclick="eliminarProd('${p.id}')">🗑</button></div>
     </div></div>`;
   }).join('');
 }
