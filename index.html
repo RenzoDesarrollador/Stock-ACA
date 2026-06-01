@@ -766,7 +766,11 @@ async function guardarRemito(){
   const vencProd=document.getElementById('r-venc-field')?document.getElementById('r-venc-field').value:'';
   const pActual=productos.find(x=>x.id===pid);
   const vencFinal=vencProd||(pActual?pActual.venc||'':'');
-  const ok=await enviarGS('remito',{...r,desc:p?p.desc:pid,venc:vencFinal});
+  const ok=await enviarGS('remito',{
+    id:r.id, desc:p?p.desc:pid, lote:r.lote, tipo:r.tipo,
+    numero:r.numero||'', fecha:r.fecha, cantidad:r.cantidad,
+    origen:r.origen||'', venc:vencFinal||''
+  });
   setSyncBar(ok?'ok':'error',ok?'✅ Remito guardado en Sheets':'⚠️ Guardado local');
   ['r-numero','r-cantidad'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('r-origen').value='TAS';
@@ -850,7 +854,12 @@ async function guardarConteo(){
   const c={id:'c'+Date.now(),prodId:pid,lote,fecha:new Date().toISOString().split('T')[0],pallets:pa,sueltas:su,upallet:up,total,esperado:teo,facturar,obs:document.getElementById('c-obs').value.trim()};
   conteos.push(c);saveAll();
   setSyncBar('syncing','⏳ Guardando conteo...');
-  const ok=await enviarGS('conteo',{...c,desc:p?p.desc:pid,codigo:p?p.codigo:'',venc:p?p.venc||'':''});
+  const ok=await enviarGS('conteo',{
+    id:c.id, desc:p?p.desc:pid, lote:c.lote, fecha:c.fecha,
+    pallets:c.pallets, sueltas:c.sueltas, upallet:c.upallet,
+    total:c.total, esperado:c.esperado, facturar:c.facturar,
+    obs:c.obs||'', codigo:p?p.codigo:'', venc:p?p.venc||'':''
+  });
   setSyncBar(ok?'ok':'error',ok?'✅ Guardado en Google Sheets':'⚠️ Guardado local');
   document.getElementById('c-pallets').value=0;
   document.getElementById('c-sueltas').value=0;
