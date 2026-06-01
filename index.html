@@ -597,16 +597,55 @@ function renderProductos(){
   }).join('');
 }
 
+function editarProd(id){
+  const p=productos.find(x=>x.id===id);
+  if(!p)return;
+  document.getElementById('modal-prod-title').textContent='Editar producto / lote';
+  document.getElementById('p-edit-id').value=id;
+  document.getElementById('p-codigo').value=p.codigo||'';
+  document.getElementById('p-desc').value=p.desc||'';
+  document.getElementById('p-lote').value=p.lote||'';
+  document.getElementById('p-venc').value=p.venc||'';
+  document.getElementById('p-upallet').value=p.upallet||'';
+  document.getElementById('p-stock').value=p.stock||'';
+  document.getElementById('modal-prod').classList.add('open');
+}
+
 function abrirModalProd(){['p-codigo','p-desc','p-lote','p-venc','p-upallet','p-stock'].forEach(id=>document.getElementById(id).value='');document.getElementById('modal-prod').classList.add('open');}
-function cerrarModal(){document.getElementById('modal-prod').classList.remove('open');}
+function cerrarModal(){
+  document.getElementById('modal-prod').classList.remove('open');
+  document.getElementById('modal-prod-title').textContent='Nuevo producto / lote';
+  document.getElementById('p-edit-id').value='';
+}
 
 function guardarProd(){
-  const p={id:'p'+Date.now(),codigo:document.getElementById('p-codigo').value.trim(),desc:document.getElementById('p-desc').value.trim(),lote:document.getElementById('p-lote').value.trim(),venc:document.getElementById('p-venc').value,upallet:parseInt(document.getElementById('p-upallet').value)||0,stock:parseInt(document.getElementById('p-stock').value)||0};
-  if(!p.desc||!p.lote){alert('Descripción y lote son obligatorios');return;}
-  productos.push(p);saveAll();
-  ['p-codigo','p-desc','p-lote','p-venc','p-upallet','p-stock'].forEach(id=>document.getElementById(id).value='');
-  cerrarModal();renderProductos();renderInicio();poblarSelectProd();poblarSelectRemito();
-  alert('Producto guardado ✓ — podés agregar otro o cerrar');
+  const editId=document.getElementById('p-edit-id').value;
+  const venc=document.getElementById('p-venc').value;
+  const desc=document.getElementById('p-desc').value.trim();
+  const lote=document.getElementById('p-lote').value.trim();
+  if(!desc||!lote){alert('Descripción y lote son obligatorios');return;}
+  
+  if(editId){
+    // Editar existente
+    const idx=productos.findIndex(x=>x.id===editId);
+    if(idx>=0){
+      productos[idx].codigo=document.getElementById('p-codigo').value.trim();
+      productos[idx].desc=desc;
+      productos[idx].lote=lote;
+      productos[idx].venc=venc;
+      productos[idx].upallet=parseInt(document.getElementById('p-upallet').value)||0;
+      productos[idx].stock=parseInt(document.getElementById('p-stock').value)||0;
+    }
+    saveAll();cerrarModal();renderProductos();renderInicio();poblarSelectProd();poblarSelectRemito();
+    alert('Producto actualizado ✓');
+  } else {
+    // Nuevo
+    const p={id:'p'+Date.now(),codigo:document.getElementById('p-codigo').value.trim(),desc,lote,venc,upallet:parseInt(document.getElementById('p-upallet').value)||0,stock:parseInt(document.getElementById('p-stock').value)||0};
+    productos.push(p);saveAll();
+    ['p-codigo','p-desc','p-lote','p-venc','p-upallet','p-stock'].forEach(id=>document.getElementById(id).value='');
+    cerrarModal();renderProductos();renderInicio();poblarSelectProd();poblarSelectRemito();
+    alert('Producto guardado ✓');
+  }
 }
 
 function eliminarProd(id){
