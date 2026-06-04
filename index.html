@@ -343,6 +343,9 @@ function calcStockTeorico(prodId, lote){
   const p=productos.find(x=>x.id===prodId);
   if(!p)return 0;
   
+  // Si no hay remitos ni conteos cargados desde Sheets, retornar 0
+  if(remitos.length===0&&conteos.length===0)return 0;
+  
   // Buscar ultimo conteo de este producto/lote
   const conteosDelProd=conteos.filter(c=>c.prodId===prodId&&c.lote===lote);
   const ultimoConteo=conteosDelProd.length?conteosDelProd[conteosDelProd.length-1]:null;
