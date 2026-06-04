@@ -374,47 +374,50 @@ async function sincronizarManual(){
 }
 
 async function sincronizar(){
-  setSyncBar('syncing','⏳ Sincronizando...');
+  setSyncBar('syncing','⏳ Sincronizando con Google Sheets...');
   try{
     const r=await fetch(GS_URL+'?ts='+Date.now());
     const data=await r.json();
     
-    if(data.conteos&&Array.isArray(data.conteos)&&data.conteos.length>0){
-      const idsLocales=new Set(conteos.map(c=>c.id));
-      data.conteos.forEach(row=>{
-        const id=String(row[0]||'');
-        if(!id||idsLocales.has(id))return;
-        // Buscar producto por descripcion y lote
-        const descC=String(row[11]||row[1]||'');
-        const loteC=String(row[2]||'');
-        const fechaC=String(row[3]||'').split('T')[0];
-        const pC=productos.find(x=>x.lote===loteC)||productos.find(x=>descC&&x.desc&&x.desc.includes(descC.substring(0,15)))||{id:String(row[1]||'')};
-        conteos.push({
-          id,prodId:pC.id,lote:loteC,fecha:fechaC,
-          pallets:Number(row[4])||0,sueltas:Number(row[5])||0,
-          upallet:Number(row[6])||0,total:Number(row[7])||0,
-          esperado:Number(row[8])||0,facturar:Number(row[9])||0,
-          obs:String(row[10]||''),desc:descC,codigo:String(row[12]||'')
+    // Sheets es la fuente de verdad - reemplaza datos locales
+    if(data.conteos!==undefined){
+      conteos=[];
+      if(Array.isArray(data.conteos)&&data.conteos.length>0){
+        data.conteos.forEach(row=>{
+          if(!row[0])return;
+          const fechaC=String(row[3]||'').split('T')[0];
+          const descC=String(row[1]||'');
+          const loteC=String(row[2]||'');
+          const pC=productos.find(x=>x.lote===loteC)||productos.find(x=>descC&&x.desc&&x.desc.includes(descC.substring(0,15)))||{id:String(row[1]||'')};
+          conteos.push({
+            id:String(row[0]),prodId:pC.id,lote:loteC,fecha:fechaC,
+            pallets:Number(row[4])||0,sueltas:Number(row[5])||0,
+            upallet:Number(row[6])||0,total:Number(row[7])||0,
+            esperado:Number(row[8])||0,facturar:Number(row[9])||0,
+            obs:String(row[10]||''),desc:descC,codigo:String(row[11]||''),
+            venc:String(row[12]||'')
+          });
         });
-      });
+      }
     }
     
-    if(data.remitos&&Array.isArray(data.remitos)&&data.remitos.length>0){
-      const idsRem=new Set(remitos.map(r=>r.id));
-      data.remitos.forEach(row=>{
-        const id=String(row[0]||'');
-        if(!id||idsRem.has(id))return;
-        const descR=String(row[1]||'');
-        const loteR=String(row[2]||'');
-        const fechaR=String(row[5]||'').split('T')[0];
-        // Buscar producto por lote primero, luego por descripcion
-        const pR=productos.find(x=>x.lote===loteR)||productos.find(x=>descR&&x.desc&&x.desc.includes(descR.substring(0,15)))||{id:''};
-        remitos.push({
-          id,prodId:pR.id,desc:descR,lote:loteR,
-          tipo:String(row[3]||'entrada'),numero:String(row[4]||''),
-          fecha:fechaR,cantidad:Number(row[6])||0,origen:String(row[7]||'')
+    if(data.remitos!==undefined){
+      remitos=[];
+      if(Array.isArray(data.remitos)&&data.remitos.length>0){
+        data.remitos.forEach(row=>{
+          if(!row[0])return;
+          const descR=String(row[1]||'');
+          const loteR=String(row[2]||'');
+          const fechaR=String(row[5]||'').split('T')[0];
+          const pR=productos.find(x=>x.lote===loteR)||productos.find(x=>descR&&x.desc&&x.desc.includes(descR.substring(0,15)))||{id:''};
+          remitos.push({
+            id:String(row[0]),prodId:pR.id,desc:descR,lote:loteR,
+            tipo:String(row[3]||'entrada'),numero:String(row[4]||''),
+            fecha:fechaR,cantidad:Number(row[6])||0,origen:String(row[7]||''),
+            venc:String(row[8]||'')
+          });
         });
-      });
+      }
     }
     
     saveAll();
@@ -840,6 +843,18 @@ function renderRemitosMes(){
   }).join('');
 }
 
+function borrarConteo(id){
+  if(!confirm('¿Eliminar este conteo?'))return;
+  conteos=conteos.filter(c=>c.id!==id);
+  saveAll();renderHistorial();renderInicio();
+}
+
+function borrarRemito(id){
+  if(!confirm('¿Eliminar este remito?'))return;
+  remitos=remitos.filter(r=>r.id!==id);
+  saveAll();renderHistorial();renderInicio();
+}
+
 function renderFiltroHistorial(){
   const s=document.getElementById('h-filtro');const cur=s.value;
   s.innerHTML='<option value="">Todos</option>'+productos.map(p=>`<option value="${p.id}">${p.desc.substring(0,26)}</option>`).join('');
@@ -870,7 +885,10 @@ function renderHistorial(){
       return`<div class="card" style="padding:.75rem 1rem">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <span class="badge ${r.tipo==='entrada'?'entrada':'salida'}">${r.tipo==='entrada'?'📥 ENTRADA':'📤 SALIDA'}</span>
-          <span style="font-size:12px;color:#aaa">${fmtF(r.fecha)}</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:12px;color:#aaa">${fmtF(r.fecha)}</span>
+            <button class="btn-danger" style="padding:4px 8px;font-size:12px" onclick="borrarRemito('${r.id}')">🗑</button>
+          </div>
         </div>
         <div style="font-weight:600;margin-top:6px;font-size:13px">${p?p.desc:r.prodId}</div>
         <div class="tag">Lote ${r.lote} · Remito ${r.numero||'-'} · ${r.origen||'-'} · <strong>${r.cantidad} uds</strong></div>
