@@ -503,8 +503,9 @@ function getMostrarVencidos(){
 function init(){
   cargarConfig();
   productos=ls(SK_PROD)||JSON.parse(JSON.stringify(PROD_INICIALES));
-  conteos=ls(SK_CONT)||[];
-  remitos=ls(SK_REM)||[];
+  // Siempre arrancar con conteos y remitos vacios - Sheets es la fuente de verdad
+  conteos=[];
+  remitos=[];
   if(!ls(SK_PROD))sv(SK_PROD,productos);
   renderTodo();
   sincronizar();
