@@ -379,6 +379,11 @@ async function sincronizar(){
     const r=await fetch(GS_URL+'?ts='+Date.now());
     const data=await r.json();
     
+    // Limpiar datos locales antes de cargar desde Sheets
+    conteos=[];
+    remitos=[];
+    saveAll();
+    
     // Sheets es la fuente de verdad - reemplaza datos locales
     if(data.conteos!==undefined){
       conteos=[];
