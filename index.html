@@ -256,7 +256,7 @@ window.addEventListener('DOMContentLoaded',function(){
   <div class="btn-row">
     <button class="btn-excel" onclick="exportarExcel()">📊 Excel</button>
     <button class="btn-pdf" onclick="exportarPDF()">📄 PDF</button>
-    <button class="btn-sec" onclick="previsualizarExport()">👁 Previsualizar</button>
+    <button style="background:#37474F;color:#fff;border:none" onclick="previsualizarExport()">👁 Previsualizar</button>
   </div>
 </div>
 </div>
@@ -319,7 +319,7 @@ window.addEventListener('DOMContentLoaded',function(){
 </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script>
 const GS_URL='https://script.google.com/macros/s/AKfycbz8J5Z_mcy3UySQ068kSz5jDIaCZxZ0zjaBqc53jq8rYKoMBWzGgsKslMwWXJ-pOroCMg/exec';
 const SK_PROD='aca_prod_v4', SK_CONT='aca_cont_v4', SK_REM='aca_rem_v4';
@@ -871,10 +871,18 @@ function borrarConteo(id){
   saveAll();renderHistorial();renderInicio();
 }
 
-function borrarRemito(id){
-  if(!confirm('¿Eliminar este remito?'))return;
+async function borrarRemito(id){
+  if(!confirm('¿Eliminar este remito? Se borra también de la planilla.'))return;
   remitos=remitos.filter(r=>r.id!==id);
   saveAll();renderHistorial();renderInicio();
+  await enviarGS('remito_borrar',{id});
+}
+
+async function borrarConteo(id){
+  if(!confirm('¿Eliminar este conteo? Se borra también de la planilla.'))return;
+  conteos=conteos.filter(c=>c.id!==id);
+  saveAll();renderHistorial();renderInicio();
+  await enviarGS('conteo_borrar',{id});
 }
 
 function renderFiltroHistorial(){
@@ -892,9 +900,9 @@ function renderHistorial(){
     el.innerHTML=[...arr].sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(c=>{
       const p=productos.find(x=>x.id===c.prodId);
       return`<div class="card" style="padding:.75rem 1rem">
-        <div style="display:flex;justify-content:space-between"><div style="font-size:13px;font-weight:600">${p?p.desc.substring(0,34):c.prodId}</div><div style="font-size:12px;color:#aaa">${fmtF(c.fecha)}</div></div>
+        <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:13px;font-weight:600">${p?p.desc.substring(0,34):c.prodId}</div><div style="display:flex;align-items:center;gap:8px"><div style="font-size:12px;color:#aaa">${fmtF(c.fecha)}</div><button class="btn-danger" style="padding:4px 8px;font-size:12px" onclick="borrarConteo('${c.id}')">🗑</button></div></div>
         <div style="display:flex;gap:12px;margin-top:6px;font-size:13px;color:#777;flex-wrap:wrap">
-          <span>Lote: ${c.lote}</span><span>Físico: <strong>${c.total}</strong></span><span>Esperado: ${c.esperado}</span>
+          <span>Lote: ${c.lote}</span><span>Físico: <strong>${c.total}</strong></span><span>Teórico: ${c.esperado}</span>
           <span style="color:#e65100;font-weight:600">Facturar: ${c.facturar}</span>
         </div>${c.obs?`<div style="font-size:12px;color:#aaa;margin-top:4px">${c.obs}</div>`:''}
       </div>`;
@@ -998,6 +1006,8 @@ function exportarExcel(){
   const totalFact=filas.reduce((s,c)=>s+c.facturar,0);
 
   const wb=XLSX.utils.book_new();
+  const COLS=11;
+  const headerRowIdx=5;
 
   // HOJA 1: A Facturar
   const wsData=[
@@ -1020,13 +1030,12 @@ function exportarExcel(){
       c.esperado, c.total, c.facturar
     ]);
   });
+  const totalRowIdx=wsData.length;
   wsData.push(['','','','','','','','','','TOTAL',totalFact]);
   const filaNota=wsData.length;
   wsData.push(['Stock teórico = Stock inicial + Entradas − Salidas (movimientos posteriores al último conteo). A FACTURAR = Stock teórico − Conteo físico.','','','','','','','','','','']);
 
   const ws1=XLSX.utils.aoa_to_sheet(wsData);
-
-  // Estilos via !cols y merges
   ws1['!cols']=[{wch:10},{wch:40},{wch:11},{wch:13},{wch:13},{wch:12},{wch:10},{wch:10},{wch:14},{wch:13},{wch:13}];
   ws1['!merges']=[
     {s:{r:0,c:0},e:{r:0,c:10}},
@@ -1035,6 +1044,36 @@ function exportarExcel(){
     {s:{r:3,c:0},e:{r:3,c:10}},
     {s:{r:filaNota,c:0},e:{r:filaNota,c:10}},
   ];
+  ws1['!freeze']={xSplit:0,ySplit:headerRowIdx+1};
+
+  const borderThin={style:'thin',color:{rgb:'CCCCCC'}};
+  const fullBorder={top:borderThin,bottom:borderThin,left:borderThin,right:borderThin};
+  const setStyle1=(r,c,style)=>{const addr=XLSX.utils.encode_cell({r,c});if(!ws1[addr])ws1[addr]={v:'',t:'s'};ws1[addr].s=style;};
+
+  setStyle1(0,0,{font:{bold:true,sz:14,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'4A2A0A'}},alignment:{horizontal:'center',vertical:'center'}});
+  setStyle1(1,0,{font:{italic:true,sz:10,color:{rgb:'4A2A0A'}},alignment:{horizontal:'center'}});
+  setStyle1(2,0,{font:{bold:true,sz:12,color:{rgb:'4A2A0A'}},alignment:{horizontal:'center'}});
+  setStyle1(3,0,{font:{sz:9,color:{rgb:'999999'}},alignment:{horizontal:'center'}});
+  for(let c=0;c<COLS;c++){
+    setStyle1(headerRowIdx,c,{font:{bold:true,color:{rgb:'FFFFFF'},sz:10},fill:{fgColor:{rgb:'37474F'}},alignment:{horizontal:'center',vertical:'center'},border:fullBorder});
+  }
+  filas.forEach((c,i)=>{
+    const r=headerRowIdx+1+i;
+    const bg=i%2===0?'FFFFFF':'F2F7F4';
+    for(let col=0;col<COLS;col++){
+      const isFact=col===10&&c.facturar>0;
+      setStyle1(r,col,{
+        font:{sz:10,bold:isFact,color:{rgb:isFact?'E65100':'333333'}},
+        fill:{fgColor:{rgb:isFact?'FFF9C4':bg}},
+        alignment:{horizontal:col===1?'left':'center',vertical:'center'},
+        border:fullBorder
+      });
+    }
+  });
+  for(let col=0;col<COLS;col++){
+    setStyle1(totalRowIdx,col,{font:{bold:true,sz:11,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'4A2A0A'}},border:fullBorder,alignment:{horizontal:col===9?'right':'center'}});
+  }
+  setStyle1(filaNota,0,{font:{italic:true,sz:8,color:{rgb:'777777'}},fill:{fgColor:{rgb:'F7F7F7'}}});
 
   XLSX.utils.book_append_sheet(wb,ws1,'A Facturar');
 
@@ -1051,6 +1090,18 @@ function exportarExcel(){
   const ws2=XLSX.utils.aoa_to_sheet(wsRem);
   ws2['!cols']=[{wch:12},{wch:14},{wch:12},{wch:42},{wch:12},{wch:10},{wch:18}];
   ws2['!merges']=[{s:{r:0,c:0},e:{r:0,c:6}}];
+  const setStyle2=(r,c,style)=>{const addr=XLSX.utils.encode_cell({r,c});if(!ws2[addr])ws2[addr]={v:'',t:'s'};ws2[addr].s=style;};
+  setStyle2(0,0,{font:{bold:true,sz:12,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'4A2A0A'}},alignment:{horizontal:'center'}});
+  for(let c=0;c<7;c++){
+    setStyle2(2,c,{font:{bold:true,color:{rgb:'FFFFFF'},sz:10},fill:{fgColor:{rgb:'1565C0'}},alignment:{horizontal:'center'},border:fullBorder});
+  }
+  remitosFilt.forEach((r,i)=>{
+    const row=3+i;
+    const bg=i%2===0?'FFFFFF':'F5F5F5';
+    for(let c=0;c<7;c++){
+      setStyle2(row,c,{font:{sz:10,bold:c===0,color:{rgb:c===0?(r.tipo==='entrada'?'1565C0':'880E4F'):'333333'}},fill:{fgColor:{rgb:bg}},alignment:{horizontal:c===3?'left':'center'},border:fullBorder});
+    }
+  });
   XLSX.utils.book_append_sheet(wb,ws2,'Remitos');
 
   XLSX.writeFile(wb,mes?`stock_ACA_${meses[parseInt(mes)]}_${anio}.xlsx`:`stock_ACA_${anio}.xlsx`);
