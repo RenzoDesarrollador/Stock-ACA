@@ -596,7 +596,7 @@ function renderInicio(){
       <div style="flex:1"><div style="font-size:13px;font-weight:600">${p.desc}</div><div class="tag">Lote ${p.lote}${p.venc?' · '+badgeV(diasVenc(p.venc)):''}</div></div>
       <div style="text-align:right;min-width:80px">
         <div style="font-size:15px;font-weight:600">${teo}</div>
-        <div style="font-size:11px;color:#888">esperado</div>
+        <div style="font-size:11px;color:#888">stock teórico</div>
         ${ultConteo?`<div style="font-size:11px;color:#e65100;font-weight:600">facturar: ${ultConteo.facturar}</div>`:''}
       </div>
     </div>`;
@@ -977,7 +977,7 @@ function previsualizarExport(){
     const p=productos.find(x=>x.id===c.prodId);
     return`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px">
       <div><div style="font-weight:600">${p?p.desc:c.prodId}</div><div class="tag">Lote ${c.lote}${p&&p.venc?' · Venc: '+fmtF(p.venc):''}</div></div>
-      <div style="text-align:right"><div style="color:#e65100;font-weight:700">${c.facturar} uds</div><div style="font-size:11px;color:#aaa">físico: ${c.total} / esperado: ${c.esperado}</div></div>
+      <div style="text-align:right"><div style="color:#e65100;font-weight:700">${c.facturar} uds</div><div style="font-size:11px;color:#aaa">físico: ${c.total} / teórico: ${c.esperado}</div></div>
     </div>`;
   }).join('');
 }
@@ -1002,7 +1002,7 @@ function exportarExcel(){
     [titulo,'','','','','','','','','',''],
     ['Generado: '+fmtF(new Date().toISOString().split('T')[0]),'','','','','','','','','',''],
     ['','','','','','','','','','',''],
-    ['Código','Descripción','Lote','Vencimiento','Fecha conteo','Stock inicial','Entradas','Salidas','Stock esperado','Conteo físico','A FACTURAR'],
+    ['Código','Descripción','Lote','Vencimiento','Fecha conteo','Stock inicial','Entradas','Salidas','Stock teórico','Conteo físico','A FACTURAR'],
   ];
 
   filas.forEach(c=>{
@@ -1017,6 +1017,8 @@ function exportarExcel(){
     ]);
   });
   wsData.push(['','','','','','','','','','TOTAL',totalFact]);
+  const filaNota=wsData.length;
+  wsData.push(['Stock teórico = Stock inicial + Entradas − Salidas (movimientos posteriores al último conteo). A FACTURAR = Stock teórico − Conteo físico.','','','','','','','','','','']);
 
   const ws1=XLSX.utils.aoa_to_sheet(wsData);
 
@@ -1027,6 +1029,7 @@ function exportarExcel(){
     {s:{r:1,c:0},e:{r:1,c:10}},
     {s:{r:2,c:0},e:{r:2,c:10}},
     {s:{r:3,c:0},e:{r:3,c:10}},
+    {s:{r:filaNota,c:0},e:{r:filaNota,c:10}},
   ];
 
   XLSX.utils.book_append_sheet(wb,ws1,'A Facturar');
@@ -1096,7 +1099,7 @@ function exportarPDF(){
   <div class="ct">
   <div class="hdr"><img src="${logoB64}"><div><h1>Cooperativa Agraria Limitada Olavarría</h1><p>${titulo}</p><p>Generado: ${fmtF(new Date().toISOString().split('T')[0])} | Cerrito 2403, Olavarría | CUIT: 33-52550362-9</p></div></div>
   <h2>Resumen a facturar</h2>
-  <table><thead><tr><th>Código</th><th>Descripción</th><th>Lote</th><th>Vencimiento</th><th>Inicio</th><th>Entradas</th><th>Salidas</th><th>Esperado</th><th>Físico</th><th>A FACTURAR</th></tr></thead>
+  <table><thead><tr><th>Código</th><th>Descripción</th><th>Lote</th><th>Vencimiento</th><th>Inicio</th><th>Entradas</th><th>Salidas</th><th>Stock teórico</th><th>Físico</th><th>A FACTURAR</th></tr></thead>
   <tbody>${filas.map(c=>{
     const p=productos.find(x=>x.id===c.prodId);
     const entradas=remitos.filter(r=>r.prodId===c.prodId&&r.lote===c.lote&&r.tipo==='entrada').reduce((s,r)=>s+r.cantidad,0);
@@ -1105,6 +1108,10 @@ function exportarPDF(){
   }).join('')}
   <tr class="trow"><td colspan="9" style="text-align:right;padding-right:10px">TOTAL A FACTURAR:</td><td class="fact">${totalFact}</td></tr>
   </tbody></table>
+  <div style="font-size:9px;color:#777;margin-top:6px;padding:6px 8px;background:#f7f7f7;border-radius:4px">
+    <strong>Stock teórico</strong> = Inicio + Entradas − Salidas (movimientos posteriores al último conteo físico registrado).
+    <strong>A FACTURAR</strong> = Stock teórico − Físico contado (lo que falta respecto de lo que debería haber).
+  </div>
   ${remitosFilt.length?`<h2>Detalle de remitos</h2><table><thead><tr><th>Tipo</th><th>Nº Remito</th><th>Fecha</th><th>Producto</th><th>Lote</th><th>Cantidad</th><th>Origen/Destino</th></tr></thead><tbody>${remitosFilt.map(r=>{const p=productos.find(x=>x.id===r.prodId);return`<tr><td style="color:${r.tipo==='entrada'?'#1565c0':'#880e4f'};font-weight:bold">${r.tipo==='entrada'?'ENTRADA':'SALIDA'}</td><td>${r.numero||'-'}</td><td>${fmtF(r.fecha)}</td><td>${p?p.desc:r.prodId}</td><td>${r.lote}</td><td>${r.cantidad}</td><td>${r.origen||'-'}</td></tr>`;}).join('')}</tbody></table>`:''}
   <div class="resumen" style="text-align:left;padding:8px 12px"><span style="font-size:11px;color:#555">Total a facturar: </span><span class="num">${totalFact} uds</span></div>
   <div class="footer">Cooperativa Agraria Limitada Olavarría — Control de Stock ACA — Documento generado automáticamente</div>
