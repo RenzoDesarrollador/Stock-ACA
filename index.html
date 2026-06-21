@@ -220,7 +220,7 @@ window.addEventListener('DOMContentLoaded',function(){
       <label>Observación</label>
       <input type="text" id="c-obs" placeholder="opcional...">
     </div>
-    <div class="btn-row" style="margin-top:4px"><button class="btn-primary" onclick="guardarConteo()">Guardar conteo</button><button class="btn-sec" onclick="cancelarConteo()">Cancelar</button></div>
+    <div class="btn-row" style="margin-top:4px"><button class="btn-primary" id="btn-guardar-conteo" onclick="guardarConteo()">Guardar conteo</button><button class="btn-sec" onclick="cancelarConteo()">Cancelar</button></div>
   </div>
 </div>
 
@@ -920,6 +920,8 @@ function renderHistorial(){
 }
 
 async function guardarConteo(){
+  const btn=document.getElementById('btn-guardar-conteo');
+  if(btn&&btn.disabled)return;
   const pid=document.getElementById('c-prod').value;
   if(!pid){alert('Seleccioná un producto');return;}
   const pa=parseInt(document.getElementById('c-pallets').value)||0;
@@ -933,6 +935,7 @@ async function guardarConteo(){
   const facturar=Math.max(0,teo-total);
   const p=productos.find(x=>x.id===pid);
   const c={id:'c'+Date.now(),prodId:pid,lote,fecha:new Date().toISOString().split('T')[0],pallets:pa,sueltas:su,upallet:up,total,esperado:teo,facturar,obs:document.getElementById('c-obs').value.trim()};
+  if(btn){btn.disabled=true;btn.textContent='Guardando...';}
   conteos.push(c);saveAll();
   setSyncBar('syncing','⏳ Guardando conteo...');
   const ok=await enviarGS('conteo',{
@@ -950,6 +953,7 @@ async function guardarConteo(){
   document.getElementById('c-facturar').textContent='0';
   const ed=document.getElementById('c-esperado-display');if(ed)ed.textContent='0';
   onCambiarProd();
+  if(btn){btn.disabled=false;btn.textContent='Guardar conteo';}
   alert(`Conteo guardado ✓\nFísico: ${total} | Esperado: ${teo} | A facturar: ${facturar}`);
   renderInicio();
 }
@@ -972,12 +976,12 @@ function previsualizarExport(){
   const ult={};[...conteosFilt].sort((a,b)=>a.fecha.localeCompare(b.fecha)).forEach(c=>{const k=c.prodId+'-'+c.lote;ult[k]=c;});
   const filas=Object.values(ult);
   const totalFact=filas.reduce((s,c)=>s+c.facturar,0);
-  el.innerHTML=`<div style="font-size:13px;color:#666;margin-bottom:10px">${filas.length} productos · <strong style="color:#e65100">Total a facturar: ${totalFact} uds</strong></div>`+
-  filas.filter(c=>c.facturar>0).map(c=>{
+  el.innerHTML=`<div style="font-size:13px;color:#666;margin-bottom:10px">${filas.length} productos contados · <strong style="color:#e65100">Total a facturar: ${totalFact} uds</strong></div>`+
+  filas.map(c=>{
     const p=productos.find(x=>x.id===c.prodId);
     return`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px">
       <div><div style="font-weight:600">${p?p.desc:c.prodId}</div><div class="tag">Lote ${c.lote}${p&&p.venc?' · Venc: '+fmtF(p.venc):''}</div></div>
-      <div style="text-align:right"><div style="color:#e65100;font-weight:700">${c.facturar} uds</div><div style="font-size:11px;color:#aaa">físico: ${c.total} / teórico: ${c.esperado}</div></div>
+      <div style="text-align:right"><div style="color:${c.facturar>0?'#e65100':'#9e9e9e'};font-weight:700">${c.facturar>0?c.facturar+' uds':'sin diferencia'}</div><div style="font-size:11px;color:#aaa">físico: ${c.total} / teórico: ${c.esperado}</div></div>
     </div>`;
   }).join('');
 }
